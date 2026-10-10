@@ -19,12 +19,12 @@ interface EmulatedDevice {
 }
 
 /**
- * No start page: the game is on screen as soon as it loads.
+ * The page opens on a home screen over the live cell (index.html #home).
  *
- * - Quest Browser: IWSDK *offers* the VR session (iwsdk.config.json `offer: "always"`),
- *   so the browser shows its own "Enter VR" prompt straight away, and again after you exit.
- * - The PC emulator (`npm run dev`): enters VR by itself, with emulated hands.
- * - A browser without WebXR: you're already in the cell; the keyboard plays it.
+ * - Quest Browser: "Enter VR" on the home screen. IWSDK also *offers* the session
+ *   (iwsdk.config.json `offer: "always"`), so the browser's own prompt works too.
+ * - The PC emulator (`npm run dev`): skips the home screen and enters VR with emulated hands.
+ * - A browser without WebXR: "Play in browser" drops you into the cell; the keyboard plays it.
  *
  * The Song of Quiet Flower is played with hands. If someone holds controllers anyway, they are drawn
  * as hands, never as controller models.
@@ -50,20 +50,8 @@ export function startGame(world: World): void {
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
 
-  const button = document.getElementById('vr-button') as HTMLButtonElement | null;
-  const keys = document.getElementById('keys');
-  const showFallback = (vrButton: boolean): void => {
-    if (keys) keys.style.display = 'block';
-    if (button && vrButton) button.style.display = 'block';
-  };
-  button?.addEventListener('click', () => {
-    unlock();
-    world.launchXR();
-  });
-  world.renderer.xr.addEventListener('sessionstart', () => {
-    if (button) button.style.display = 'none';
-    if (keys) keys.style.display = 'none';
-  });
+  world.renderer.xr.addEventListener('sessionstart', () => setScreen('xr'));
+  world.renderer.xr.addEventListener('sessionend', () => setScreen('home'));
 
   const emulator = (window as unknown as { IWER_DEVICE?: EmulatedDevice }).IWER_DEVICE;
   if (emulator) {
@@ -73,20 +61,34 @@ export function startGame(world: World): void {
     const mode = emulator.controlMode;
     emulator.controlMode = 'programmatic';
     emulator.controlMode = mode;
+    setScreen('xr');
     world.launchXR();
-    world.renderer.xr.addEventListener('sessionend', () => showFallback(true));
-    return;
   }
 
+  const play = document.getElementById('play-button') as HTMLButtonElement | null;
+  const label = document.getElementById('play-label');
+  const hint = document.getElementById('play-hint');
+  const dialog = document.getElementById('how-dialog') as HTMLDialogElement | null;
+  document.getElementById('how-button')?.addEventListener('click', () => dialog?.showModal());
+  document.getElementById('menu-button')?.addEventListener('click', () => setScreen('home'));
+
   const xr = navigator.xr;
-  if (!xr) {
-    showFallback(false);
-    return;
-  }
-  void xr.isSessionSupported('immersive-vr').then((ok) => {
-    // Quest Browser supports offerSession, so its own prompt appears; other browsers get our button.
-    const canOffer = typeof (xr as XRSystem & { offerSession?: unknown }).offerSession === 'function';
-    showFallback(ok && !canOffer);
-    world.renderer.xr.addEventListener('sessionend', () => showFallback(ok && !canOffer));
+  void (xr ? xr.isSessionSupported('immersive-vr') : Promise.resolve(false)).then((vr) => {
+    if (!play || !label || !hint) return;
+    label.textContent = vr ? 'Enter VR' : 'Play in browser';
+    hint.textContent = vr
+      ? 'Sit down, put the controllers away and use your hands.'
+      : 'No VR headset found. You can still look around the cell and cast with the keyboard.';
+    play.disabled = false;
+    play.addEventListener('click', () => {
+      unlock();
+      if (vr) world.launchXR();
+      else setScreen('browser');
+    });
   });
+}
+
+/** Which page overlay is showing; index.html's CSS keys off body[data-screen]. */
+function setScreen(screen: 'home' | 'browser' | 'xr'): void {
+  document.body.dataset.screen = screen;
 }

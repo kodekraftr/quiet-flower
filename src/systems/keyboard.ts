@@ -12,6 +12,8 @@ export class KeyboardSystem extends createSystem({}) {
   init(): void {
     const onKey = (e: KeyboardEvent): void => {
       if (e.repeat || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Keys on the home screen belong to its buttons, not the game.
+      if (document.body.dataset.screen === 'home') return;
       switch (e.key) {
         case ' ':
           e.preventDefault();

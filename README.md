@@ -17,14 +17,14 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts the IWSDK dev server on **https://localhost:8081** and opens a browser with the IWER emulator (a WebXR emulator). There's no start page: it goes straight into the cell in VR with **emulated hands**. Use the **Hand [L] / Hand [R]** panels to move each hand and change its pose (e.g. *pinch*, *fist*), or switch modes from the hand icon in the emulator's top bar.
+`npm run dev` starts the IWSDK dev server on **https://localhost:8081** and opens a browser with the IWER emulator (a WebXR emulator). The emulator skips the home screen and goes straight into the cell in VR with **emulated hands**. Use the **Hand [L] / Hand [R]** panels to move each hand and change its pose (e.g. *pinch*, *fist*), or switch modes from the hand icon in the emulator's top bar.
 
 ### On your Quest 3 / 3S (same Wi-Fi as the PC)
 
 1. Find your PC's IP: `ipconfig` → "IPv4 Address" (e.g. 192.168.1.20).
 2. In Quest Browser open `https://192.168.1.20:8081` and accept the certificate warning (it's the local dev certificate).
    Allow Node.js through Windows Firewall if asked.
-3. Put the controllers down, make sure **hand tracking** is on (Settings → Movement tracking → Hand tracking) and sit down. The browser asks to **Enter VR** by itself; accept and you're in the cell.
+3. Put the controllers down, make sure **hand tracking** is on (Settings → Movement tracking → Hand tracking) and sit down. Tap **Enter VR** on the home screen (or accept the browser's own Enter VR prompt) and you're in the cell.
    The Song of Quiet Flower is played with hands. If you pick the controllers up anyway, they're drawn as hands, not controllers.
 
 USB alternative: `adb reverse tcp:8081 tcp:8081`, then open `https://localhost:8081` on the headset.
@@ -44,7 +44,7 @@ Only **Ga** and **Ma** are unlocked (you've only found Rise). Rise = **Ga Ma**. 
 ### Keyboard (desktop / emulator)
 
 `Space` staff · `1`–`4` add Sa / Re / Ga / Ma · `Backspace` remove last · `Enter` cast · `Esc` dismiss.
-In a normal desktop browser (no VR), the page opens straight into the cell; the keys are listed at the bottom left.
+In a normal desktop browser (no VR), click **Play in browser** on the home screen; the keys are listed at the bottom left and **Home** goes back.
 
 ### URL options (no rebuild needed)
 
@@ -98,3 +98,9 @@ Other commands: `npm test` · `npm run typecheck` · `npm run build` (output in 
 - Notes are synthesised; the staff is placeholder art. The cell is real art but still uses procedural materials (see `art/README.md` for swapping in scanned textures).
 - The bundle is ~1.7 MB compressed, mostly the SDK. Trimming it is part of the cold-start pass.
 - The optional IWSDK "reference" cache failed to download in the build sandbox; on your PC run `npm run reference:warmup` once if you want it (not needed to run the game).
+
+## Deploy (GitHub Pages)
+
+Every push to `master` builds the app and publishes `dist/` via `.github/workflows/deploy.yml`.
+One-time setup: repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Live at https://kodekraftr.github.io/quiet-flower/.
