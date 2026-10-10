@@ -1,0 +1,41 @@
+/**
+ * Prototype settings, read once from the page URL so they can be changed
+ * on the headset without a rebuild, e.g.
+ *   https://<pc>:8081/?notation=western&hold=450&summon=hold&debug=1
+ * The full game moves these into the in-game Settings panel.
+ */
+
+import type { Notation } from './game/notes.js';
+import type { SpellId } from './game/spells.js';
+
+export interface HumSettings {
+  notation: Notation;
+  /** Fist hold before a cast fires. */
+  castHoldMs: number;
+  /** 'clap' = clap and pull apart (default); 'hold' also allows one-hand pinch-and-hold. */
+  summon: 'clap' | 'hold';
+  /** Metres from the eyes to the staff. */
+  staffDistance: number;
+  learned: SpellId[];
+  debug: boolean;
+}
+
+function inRange(value: number, min: number, max: number): boolean {
+  return Number.isFinite(value) && value >= min && value <= max;
+}
+
+function readSettings(search: string): HumSettings {
+  const q = new URLSearchParams(search);
+  const hold = Number(q.get('hold'));
+  const dist = Number(q.get('dist'));
+  return {
+    notation: q.get('notation') === 'western' ? 'western' : 'sargam',
+    castHoldMs: inRange(hold, 150, 1000) ? hold : 350,
+    summon: q.get('summon') === 'hold' ? 'hold' : 'clap',
+    staffDistance: inRange(dist, 30, 70) ? dist / 100 : 0.45,
+    learned: q.get('learn') === 'all' ? ['rise', 'sleep', 'cuckoo'] : ['rise'],
+    debug: q.get('debug') === '1',
+  };
+}
+
+export const settings: HumSettings = readSettings(window.location.search);
