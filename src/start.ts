@@ -53,14 +53,7 @@ export function startGame(world: World): void {
   world.renderer.xr.addEventListener('sessionstart', () => setScreen('xr'));
   world.renderer.xr.addEventListener('sessionend', () => setScreen('home'));
 
-  const emulator = (window as unknown as { IWER_DEVICE?: EmulatedDevice }).IWER_DEVICE;
-  if (emulator) {
-    emulator.primaryInputMode = 'hand';
-    // The emulator's side panels only re-read the input mode when its control mode changes;
-    // a quick round-trip makes them show hand poses (pinch, fist…) instead of controller buttons.
-    const mode = emulator.controlMode;
-    emulator.controlMode = 'programmatic';
-    emulator.controlMode = mode;
+  if (useEmulatedHands()) {
     setScreen('xr');
     world.launchXR();
   }
@@ -86,6 +79,22 @@ export function startGame(world: World): void {
       else setScreen('browser');
     });
   });
+}
+
+/**
+ * In the IWER emulator (`npm run dev`), switches it to hands. Returns false
+ * outside the emulator.
+ */
+export function useEmulatedHands(): boolean {
+  const emulator = (window as unknown as { IWER_DEVICE?: EmulatedDevice }).IWER_DEVICE;
+  if (!emulator) return false;
+  emulator.primaryInputMode = 'hand';
+  // The emulator's side panels only re-read the input mode when its control mode changes;
+  // a quick round-trip makes them show hand poses (pinch, fist…) instead of controller buttons.
+  const mode = emulator.controlMode;
+  emulator.controlMode = 'programmatic';
+  emulator.controlMode = mode;
+  return true;
 }
 
 /** Which page overlay is showing; index.html's CSS keys off body[data-screen]. */

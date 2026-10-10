@@ -84,7 +84,7 @@ export function pointDistance(a: Point3, b: Point3): number {
 }
 
 /** [knuckle, tip] for the four non-thumb fingers. */
-const FINGERS: ReadonlyArray<readonly [number, number]> = [
+export const FINGERS: ReadonlyArray<readonly [number, number]> = [
   [J.INDEX_PROX, J.INDEX_TIP],
   [J.MIDDLE_PROX, J.MIDDLE_TIP],
   [J.RING_PROX, J.RING_TIP],
