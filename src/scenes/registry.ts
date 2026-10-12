@@ -8,4 +8,5 @@ import type { SceneFactory } from './scene.js';
 
 export const SCENE_FACTORIES: Partial<Record<SceneId, SceneFactory>> = {
   cell: async () => new (await import('./cell-scene.js')).CellScene(),
+  corridor: async () => new (await import('./corridor-scene.js')).CorridorScene(),
 };

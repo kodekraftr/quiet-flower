@@ -8,7 +8,7 @@
 import { createSystem } from '@iwsdk/core';
 import { settings } from '../config.js';
 import { HINT_DELAY_MS, HintClock } from '../game/hints.js';
-import type { SongSheet } from '../scene/song-sheet.js';
+import type { HintSurface } from '../scene/scrap-card.js';
 import { effects } from './effects.js';
 import { game } from './progress-state.js';
 
@@ -16,7 +16,7 @@ const clock = new HintClock(settings.debug ? 8000 : HINT_DELAY_MS);
 
 export const hints = {
   /** Where handwritten hints appear (null: shown as a caption). */
-  page: null as SongSheet | null,
+  page: null as HintSurface | null,
   set(text: string | null): void {
     clock.set(text, performance.now());
     if (hints.page && hints.page.margins.hint) {

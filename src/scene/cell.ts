@@ -27,7 +27,7 @@ import {
   Vector3,
 } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { baked } from './baked.js';
+import { COMMON_FLATS, type FlatColours, prepareBakedRoom, takeNodes } from './baked-room.js';
 
 export interface Cell {
   /** Static room: everything that never moves. */
@@ -47,17 +47,11 @@ export interface Cell {
 }
 
 /** Flat colours for the surfaces that emit light or are only seen through gaps. */
-const FLAT: Record<string, { color: number; glow?: boolean }> = {
+const FLAT: FlatColours = {
+  ...COMMON_FLATS,
   emit_sky: { color: 0x1a2a48 },
   emit_glass: { color: 0xffc27a, glow: true },
-  emit_flame: { color: 0xfff0c0, glow: true },
-  flat_mortar: { color: 0x0b0a08 },
 };
-
-function flatKey(mesh: Mesh): string | undefined {
-  const names = `${mesh.name} ${(mesh.material as { name?: string }).name ?? ''}`;
-  return Object.keys(FLAT).find((k) => names.includes(k));
-}
 
 function blobTexture(): CanvasTexture {
   const c = document.createElement('canvas');
@@ -106,40 +100,11 @@ function addBlob(room: Group, object: Object3D, size: number, y: number, opacity
 export function buildCell(gltf: GLTF): Cell {
   const room = gltf.scene;
   room.name = 'cell-room';
-  const meshes: Mesh[] = [];
-  room.traverse((o) => {
-    if ((o as Mesh).isMesh) meshes.push(o as Mesh);
-  });
-
   const lanternCenter = new Vector3(1.0, 1.49, -1.75);
-  for (const mesh of meshes) {
-    const key = flatKey(mesh);
-    const old = mesh.material as MeshBasicMaterial & { map?: CanvasTexture | null };
-    let mat: MeshBasicMaterial;
-    if (key) {
-      mat = new MeshBasicMaterial({ color: FLAT[key].color });
-      baked.add(mat, FLAT[key].glow);
-      if (key === 'emit_glass') new Box3().setFromObject(mesh).getCenter(lanternCenter);
-    } else {
-      const map = old.map ?? null;
-      if (map) map.colorSpace = SRGBColorSpace;
-      mat = new MeshBasicMaterial({ map });
-      baked.add(mat);
-    }
-    old.dispose?.();
-    mesh.material = mat;
-  }
-
-  const find = (name: string): Object3D => {
-    const o = room.getObjectByName(name);
-    if (!o) throw new Error(`cell.glb is missing "${name}"`);
-    return o;
-  };
-  const pebble = find('pebble');
-  const crate = find('crate');
-  const doorBar = find('door_bar');
-  const door = find('door');
-  for (const o of [pebble, crate, doorBar, door]) o.removeFromParent();
+  prepareBakedRoom(room, FLAT, (key, mesh) => {
+    if (key === 'emit_glass') new Box3().setFromObject(mesh).getCenter(lanternCenter);
+  });
+  const { pebble, crate, door_bar: doorBar, door } = takeNodes(room, 'cell.glb', ['pebble', 'crate', 'door_bar', 'door']);
 
   const blob = blobTexture();
   addBlob(room, pebble, 0.15, 0.4415, 0.8, blob); // on the pedestal top

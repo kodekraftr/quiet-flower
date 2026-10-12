@@ -8,10 +8,18 @@ A seated, hands-only musical-spell escape story (`../docs/STORYBOARD.md`, `../do
 2. **Pinch each piece and drop it inside the outline**; it snaps home.
 3. The whole page glows and hums, the pebble trembles, and a drawing of a clap appears in its margin. You've found **Rise (Ga Ma)**.
 4. **Clap → the staff appears** (a fist drawing appears on the page). Write Ga Ma, **hold a fist** to cast.
-5. **Look at the door bar and cast Rise**: the bar lifts, the door swings open, and the story blinks on to the Corridor (coming next).
+5. **Look at the door bar and cast Rise**: the bar lifts, the door swings open, and the story blinks on to the Corridor.
+
+**Scene 3, The Corridor** (the hearing rule's first puzzle):
+
+1. **Look at the scrap** on the floor and **pinch**: you find **Sleep (Ma Ga Re)**; Re unlocks.
+2. Tolo dozes half-awake at his table; Senn plays dice in the guardroom behind a closed door. Their **ear markers** show who can hear you: Senn's ear is struck out with a door.
+3. Sleep straight away reaches only Tolo. Senn notices the silence, comes out and **catches you → the moment rewinds** (a few seconds; nothing is lost).
+4. **Rise on the guardroom's latch bar** opens the door (Senn starts to get up), **then Sleep** reaches both.
+5. With both asleep, **look at the ore cart and pinch its rim** to climb in (the Yard is next). Sleepers wake after 30 s (slower while the staff is open), and an awake guard catches you.
 
 Any other melody triggers a harmless *Curiosity* (the lamp flickers, the pebble hums, moths circle the lantern). Stuck for 45 s? New handwriting appears on the page.
-The **hearing rule** is in place: listeners carry an ear marker (glowing ear = can hear; struck ear + door / water / earmuff / distance glyph = can't). Scene 2 has no listeners; add `?debug=1` to see a test listener behind the door.
+The **hearing rule**: every listener carries an ear marker (glowing ear = can hear; struck ear + door / water / earmuff / distance glyph = can't; z z = asleep).
 
 Built with Meta's Immersive Web SDK (IWSDK) 1.0.1 — a WebXR app that runs in Meta Quest Browser.
 

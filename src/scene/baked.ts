@@ -34,6 +34,11 @@ export const baked = {
     level = l;
     for (const m of materials) refresh(m);
   },
+  /** Forget every material (the scene that owned them is gone). */
+  clear(): void {
+    materials.clear();
+    level = 1;
+  },
   setTint(m: MeshBasicMaterial, tint: Color | null): void {
     m.userData.tint = tint ?? undefined;
     refresh(m);

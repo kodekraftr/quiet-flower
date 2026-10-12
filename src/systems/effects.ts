@@ -46,6 +46,8 @@ const refs: { lantern: Vector3 | null; pebble: Object3D | null; dust: Points | n
 };
 let pending: PendingCast | null = null;
 let rippleRequested = false;
+let liftResets: Object3D[] = [];
+let clearLifts = false;
 let captionRequest: { text: string; color: string; ms: number } | null = null;
 let trembleMs = 0;
 
@@ -59,10 +61,16 @@ export const effects = {
     refs.pebble = null;
     refs.dust = null;
     pending = null;
+    clearLifts = true;
+    baked.clear();
   },
   /** A subtitle or story caption near where the player is looking. */
   say(text: string, color = HANDWRITING, ms = CAPTION_MS): void {
     captionRequest = { text, color, ms };
+  },
+  /** Put a lifted object straight back down (rewind). */
+  resetLift(object: Object3D): void {
+    liftResets.push(object);
   },
   /** The pebble trembles (the song hums by itself). */
   tremble(ms: number): void {
@@ -146,6 +154,21 @@ export class EffectsSystem extends createSystem({}) {
       const c = captionRequest;
       captionRequest = null;
       this.showCaption(c.text, c.color, now, c.ms);
+    }
+    if (clearLifts) {
+      clearLifts = false;
+      this.lifts.clear();
+    }
+    if (liftResets.length) {
+      for (const o of liftResets) {
+        const s = this.lifts.get(o);
+        if (s) {
+          o.position.y = s.baseY;
+          s.t = 0;
+          s.lifted = false;
+        }
+      }
+      liftResets = [];
     }
     if (trembleMs > 0) {
       this.humUntil = now + trembleMs;

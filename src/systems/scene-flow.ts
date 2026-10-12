@@ -19,7 +19,7 @@ const FADE_OUT_S = 0.45;
 const FADE_IN_S = 0.7;
 const TITLE_MS = 2800;
 
-type Phase = 'idle' | 'out' | 'loading' | 'in';
+type Phase = 'idle' | 'out' | 'loading' | 'in' | 'blink';
 
 /** Filled in by SceneFlowSystem.init(). */
 export const sceneFlow = {
@@ -30,6 +30,11 @@ export const sceneFlow = {
   missing: null as ((id: SceneId) => StoryScene) | null,
   goTo: (_id: SceneId): void => {},
   next: (): void => {},
+  /**
+   * Rewind (storyboard "caught"): the view ripples to dark gold, `atDark` resets
+   * the puzzle while nothing is visible, then the view opens again.
+   */
+  blink: (_atDark: () => void): void => {},
   /** Called after a scene finishes loading (for saving). */
   onEnter: (_id: SceneId): void => {},
 };
@@ -48,6 +53,7 @@ export class SceneFlowSystem extends createSystem({}) {
   private titleUntil = 0;
   /** The loaded scene hasn't begun yet: the player is still on the home screen. */
   private beginPending = false;
+  private blinkAt: (() => void) | null = null;
 
   init(): void {
     this.shell.renderOrder = 1000;
@@ -57,6 +63,12 @@ export class SceneFlowSystem extends createSystem({}) {
     this.title.setOpacity(0);
     this.scene.add(this.title.mesh);
     sceneFlow.goTo = (id) => this.goTo(id);
+    sceneFlow.blink = (atDark) => {
+      if (this.phase !== 'idle') return;
+      this.blinkAt = atDark;
+      this.shell.material.color.setHex(0x2a1c08);
+      this.phase = 'blink';
+    };
     sceneFlow.next = () => {
       const id = sceneFlow.current ? nextScene(sceneFlow.current.id) : null;
       if (id) this.goTo(id);
@@ -79,7 +91,20 @@ export class SceneFlowSystem extends createSystem({}) {
         break;
       case 'in':
         this.fade = Math.max(0, this.fade - delta / FADE_IN_S);
-        if (this.fade <= 0) this.phase = 'idle';
+        if (this.fade <= 0) {
+          this.phase = 'idle';
+          this.shell.material.color.setHex(0x000000);
+        }
+        break;
+      case 'blink':
+        this.fade = Math.min(1, this.fade + delta / 0.9);
+        if (this.fade >= 1) {
+          staffApi.close();
+          staffState.melody.length = 0;
+          this.blinkAt?.();
+          this.blinkAt = null;
+          this.phase = 'in';
+        }
         break;
       default:
         break;

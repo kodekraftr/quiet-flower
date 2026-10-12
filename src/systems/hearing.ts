@@ -19,6 +19,8 @@ type MarkerState = 'hears' | DeafReason | 'asleep';
 const STATES: readonly MarkerState[] = ['hears', 'door', 'noise', 'earmuffs', 'distance', 'asleep'];
 const REFRESH_MS = 200;
 const MARKER_SIZE = 0.2;
+/** Markers keep about this angular size (radians) when far away, so they stay readable. */
+const MARKER_ANGLE = 0.075;
 const PULSE_MS = 900;
 /** Ear height below the marker. */
 const EAR_DROP = 0.45;
@@ -150,7 +152,8 @@ export class HearingSystem extends createSystem({
 
   init(): void {
     for (const s of STATES) {
-      this.materials.set(s, new SpriteMaterial({ map: drawMarker(s), transparent: true, depthWrite: false }));
+      // Drawn over walls: who can and can't hear is the puzzle, even behind a door.
+      this.materials.set(s, new SpriteMaterial({ map: drawMarker(s), transparent: true, depthWrite: false, depthTest: false }));
     }
     this.queries.listeners.subscribe('qualify', (entity) => {
       const sprite = new Sprite(this.materials.get('hears'));
@@ -178,13 +181,15 @@ export class HearingSystem extends createSystem({
 
   update(): void {
     const now = performance.now();
+    if (this.markers.size) getViewer(this.world, this.eye, this.forward);
     for (const [entity, marker] of this.markers) {
       const o = entity.object3D;
       if (!o) continue;
       o.getWorldPosition(marker.sprite.position);
       marker.sprite.position.y += entity.getValue(Listener, 'markerHeight') ?? 2.1;
       const t = (now - marker.pulseAt) / PULSE_MS;
-      marker.sprite.scale.setScalar(MARKER_SIZE * (t >= 0 && t < 1 ? 1 + 0.45 * Math.sin(t * Math.PI) : 1));
+      const size = Math.max(MARKER_SIZE, marker.sprite.position.distanceTo(this.eye) * MARKER_ANGLE);
+      marker.sprite.scale.setScalar(size * (t >= 0 && t < 1 ? 1 + 0.45 * Math.sin(t * Math.PI) : 1));
     }
     if (now - this.lastRefresh < REFRESH_MS) return;
     this.lastRefresh = now;
