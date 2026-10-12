@@ -6,7 +6,18 @@
  */
 
 import { createSystem } from '@iwsdk/core';
-import { Color, Mesh, MeshStandardMaterial, Object3D, Vector3 } from 'three';
+import {
+  AdditiveBlending,
+  CanvasTexture,
+  Color,
+  Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  SRGBColorSpace,
+  Sprite,
+  SpriteMaterial,
+  Vector3,
+} from 'three';
 import { Liftable } from '../game-components.js';
 import { baked } from '../scene/baked.js';
 import { getViewer } from '../scene/viewer.js';
@@ -20,6 +31,23 @@ const NO_EMISSIVE = new Color(0x000000);
 const BAKED_TINT = new Color(0.75, 1.35, 1.3);
 
 export const targeting: { current: Object3D | null } = { current: null };
+
+/** A soft teal ring drawn around the current target, so it reads on any surface. */
+function ringTexture(): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.strokeStyle = '#2FB3A6';
+  g.shadowColor = '#2FB3A6';
+  g.shadowBlur = 12;
+  g.lineWidth = 7;
+  g.beginPath();
+  g.arc(64, 64, 50, 0, Math.PI * 2);
+  g.stroke();
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
 
 function setHighlight(object: Object3D | null, on: boolean): void {
   object?.traverse((child) => {
@@ -39,12 +67,24 @@ export class TargetingSystem extends createSystem({ liftables: { required: [Lift
   private readonly toObject = new Vector3();
   private candidate: Object3D | null = null;
   private candidateSince = 0;
+  private readonly ring = new Sprite(
+    new SpriteMaterial({ map: ringTexture(), transparent: true, blending: AdditiveBlending, depthTest: false, depthWrite: false }),
+  );
+  private ringRadius = 0.25;
+
+  init(): void {
+    this.ring.visible = false;
+    this.ring.renderOrder = 6;
+    this.scene.add(this.ring);
+    this.cleanupFuncs.push(() => this.ring.removeFromParent());
+  }
 
   update(): void {
     getViewer(this.world, this.eye, this.forward);
     let best: Object3D | null = null;
     let bestScore = MAX_ANGLE;
 
+    let bestRadius = 0.25;
     for (const entity of this.queries.liftables.entities) {
       const object = entity.object3D;
       if (!object) continue;
@@ -57,6 +97,7 @@ export class TargetingSystem extends createSystem({ liftables: { required: [Lift
       if (score < bestScore) {
         bestScore = score;
         best = object;
+        bestRadius = radius;
       }
     }
 
@@ -69,6 +110,13 @@ export class TargetingSystem extends createSystem({ liftables: { required: [Lift
       setHighlight(targeting.current, false);
       setHighlight(this.candidate, true);
       targeting.current = this.candidate;
+      this.ringRadius = bestRadius;
+    }
+    const target = targeting.current;
+    this.ring.visible = target !== null;
+    if (target) {
+      target.getWorldPosition(this.ring.position);
+      this.ring.scale.setScalar(this.ringRadius * 2.2 * (1 + 0.06 * Math.sin(now / 160)));
     }
   }
 }

@@ -31,6 +31,7 @@ import { frameGestures, HANDEDNESS, hands, type Handedness } from '../input/hand
 import { CanvasText } from '../scene/canvas-text.js';
 import { getViewer } from '../scene/viewer.js';
 import { effects } from './effects.js';
+import { game, progress, sceneRules } from './progress-state.js';
 import { staffApi, staffState } from './staff-state.js';
 import { targeting } from './targeting.js';
 
@@ -50,6 +51,8 @@ const NOTE_PICK_RADIUS = 0.035;
 const DROP_DEPTH = 0.08;
 const DROP_HALF_HEIGHT = 0.085;
 const POKE_RADIUS = 0.025;
+/** While held, fingers parting past this (but not yet released) freeze the note in place. */
+const HOLD_STILL_DISTANCE = 0.022;
 const RING_DOTS = 24;
 const RING_RADIUS = 0.07;
 const OPEN_SECONDS = 0.35;
@@ -78,6 +81,8 @@ interface Token {
   line: number;
   unlocked: boolean;
   mesh: Mesh;
+  outline: Mesh<RingGeometry, MeshBasicMaterial>;
+  label: CanvasText;
   local: Vector3;
 }
 
@@ -102,13 +107,15 @@ export class StaffSystem extends createSystem({}) {
   private readonly knot = new Mesh();
   private readonly ring = new Group();
   private readonly ringDots: Mesh[] = [];
-  private readonly unlocked = new Set(unlockedLines(settings.learned));
+  private readonly unlocked = new Set(unlockedLines(progress.learned));
+  private readonly lockedMat = new MeshBasicMaterial({ color: 0x3a4452, side: DoubleSide });
   private held: Held | null = null;
   private openTime = 0;
   private playingUntil = 0;
   private clearAt = 0;
   private readonly v1 = new Vector3();
   private readonly v2 = new Vector3();
+  private readonly heldLocal = new Vector3();
   private readonly eye = new Vector3();
   private readonly forward = new Vector3();
 
@@ -130,6 +137,7 @@ export class StaffSystem extends createSystem({}) {
       synth.tick();
     };
     staffApi.cast = () => this.cast();
+    this.cleanupFuncs.push(game.on('learned', () => this.refreshTokens()));
     this.cleanupFuncs.push(() => {
       this.root.removeFromParent();
       this.ring.removeFromParent();
@@ -165,7 +173,8 @@ export class StaffSystem extends createSystem({}) {
   // ── Summon / dismiss ────────────────────────────────────────────────
 
   private open(): void {
-    if (staffState.open) return;
+    if (staffState.open || !progress.staffUnlocked) return;
+    this.refreshTokens();
     getViewer(this.world, this.eye, this.forward);
     this.forward.y = 0;
     if (this.forward.lengthSq() < 1e-6) this.forward.set(0, 0, -1);
@@ -179,6 +188,7 @@ export class StaffSystem extends createSystem({}) {
     this.body.scale.set(0.001, 1, 1);
     staffState.open = true;
     synth.whoosh(true);
+    game.emit('staff', { open: true });
   }
 
   private close(): void {
@@ -187,6 +197,7 @@ export class StaffSystem extends createSystem({}) {
     this.root.visible = false;
     staffState.open = false;
     synth.whoosh(false);
+    game.emit('staff', { open: false });
   }
 
   // ── Hands ───────────────────────────────────────────────────────────
@@ -204,10 +215,15 @@ export class StaffSystem extends createSystem({}) {
       }
       if (h.pinchStarted && !this.held) this.pick(key, h.pinchPoint);
       if (this.held?.hand === key) {
-        this.toLocal(h.pinchPoint, this.v1);
-        this.heldMesh.position.set(this.v1.x, this.v1.y, this.v1.z + 0.004);
-        this.updateGhost(this.v1);
-        if (h.pinchEnded) this.dropHeld(this.v1);
+        // Opening the fingers moves the pinch point; drop where the note was last
+        // held firmly, not where the parting fingers ended up.
+        if (h.pinchEnded) {
+          this.dropHeld(this.heldLocal);
+        } else if (h.pinchDistance <= HOLD_STILL_DISTANCE) {
+          this.toLocal(h.pinchPoint, this.heldLocal);
+          this.heldMesh.position.set(this.heldLocal.x, this.heldLocal.y, this.heldLocal.z + 0.004);
+          this.updateGhost(this.heldLocal);
+        }
       }
     }
     this.updateHover();
@@ -248,6 +264,7 @@ export class StaffSystem extends createSystem({}) {
 
   private hold(line: number, hand: Handedness): void {
     this.held = { line, hand };
+    this.toLocal(hands[hand].pinchPoint, this.heldLocal);
     this.heldMesh.geometry = this.noteGeos[line];
     this.heldMesh.material = this.noteMats[line];
     this.heldMesh.visible = true;
@@ -326,7 +343,7 @@ export class StaffSystem extends createSystem({}) {
     const now = performance.now();
     if (!staffState.open || this.held || now < this.playingUntil) return;
     const melody = [...staffState.melody];
-    const result = matchMelody(melody, settings.learned, false);
+    const result = matchMelody(melody, progress.learned, sceneRules.allowFree);
     if (result.kind === 'empty') return;
     const seconds = synth.playMelody(melody, rhythmFor(result, melody.length), settings.notation);
     effects.cast(result, targeting.current, seconds);
@@ -360,6 +377,18 @@ export class StaffSystem extends createSystem({}) {
   }
 
   // ── Visuals ─────────────────────────────────────────────────────────
+
+  /** Notes unlock as spells are found (one new note per scene). */
+  private refreshTokens(): void {
+    this.unlocked.clear();
+    for (const line of unlockedLines(progress.learned)) this.unlocked.add(line);
+    for (const t of this.tokens) {
+      t.unlocked = this.unlocked.has(t.line);
+      t.mesh.material = t.unlocked ? this.noteMats[t.line] : this.lockedMat;
+      t.outline.material.color.setHex(t.unlocked ? LINE_COLORS[t.line] : 0x3a4452);
+      t.label.set(t.unlocked ? noteName(t.line, settings.notation) : 'locked', t.unlocked ? '#E8EEF5' : '#6F7C8C');
+    }
+  }
 
   private layout(): void {
     for (let i = 0; i < MAX_BEATS; i++) {
@@ -420,28 +449,23 @@ export class StaffSystem extends createSystem({}) {
     // Palette under the staff: one token per line; locked lines are grey.
     const backingGeo = new CircleGeometry(0.022, 32);
     const backingMat = new MeshBasicMaterial({ color: 0x0b1016, transparent: true, opacity: 0.9, depthWrite: false });
-    const lockedMat = new MeshBasicMaterial({ color: 0x3a4452, side: DoubleSide });
     for (let line = 0; line < LINE_COUNT; line++) {
-      const unlocked = this.unlocked.has(line);
       const local = new Vector3(PALETTE_X0 + line * PALETTE_DX, PALETTE_Y, 0.002);
       const backing = new Mesh(backingGeo, backingMat);
       backing.position.set(local.x, local.y, 0);
       this.body.add(backing);
-      const outline = new Mesh(
-        new RingGeometry(0.021, 0.0235, 40),
-        new MeshBasicMaterial({ color: unlocked ? LINE_COLORS[line] : 0x3a4452, side: DoubleSide }),
-      );
+      const outline = new Mesh(new RingGeometry(0.021, 0.0235, 40), new MeshBasicMaterial({ color: 0x3a4452, side: DoubleSide }));
       outline.position.set(local.x, local.y, 0.001);
       this.body.add(outline);
-      const mesh = new Mesh(this.tokenGeos[line], unlocked ? this.noteMats[line] : lockedMat);
+      const mesh = new Mesh(this.tokenGeos[line], this.lockedMat);
       mesh.position.copy(local);
       this.body.add(mesh);
       const label = new CanvasText(0.05, 0.016, 256, 82);
-      label.set(unlocked ? noteName(line, settings.notation) : 'locked', unlocked ? '#E8EEF5' : '#6F7C8C');
       label.mesh.position.set(local.x, local.y - 0.031, 0.001);
       this.body.add(label.mesh);
-      this.tokens.push({ line, unlocked, mesh, local });
+      this.tokens.push({ line, unlocked: false, mesh, outline, label, local });
     }
+    this.refreshTokens();
 
     // Dismiss knot at the right end.
     this.knot.geometry = new SphereGeometry(0.011, 16, 12);

@@ -6,7 +6,7 @@
  */
 
 import type { Notation } from './game/notes.js';
-import type { SpellId } from './game/spells.js';
+import { isSceneId, type SceneId } from './game/progress.js';
 
 export interface HumSettings {
   notation: Notation;
@@ -16,7 +16,10 @@ export interface HumSettings {
   summon: 'clap' | 'hold';
   /** Metres from the eyes to the staff. */
   staffDistance: number;
-  learned: SpellId[];
+  /** ?learn=all: every spell known and the staff unlocked from the start. */
+  learnAll: boolean;
+  /** ?scene=cell (etc.): start in that scene instead of the saved one. */
+  scene: SceneId | null;
   debug: boolean;
 }
 
@@ -33,7 +36,8 @@ function readSettings(search: string): HumSettings {
     castHoldMs: inRange(hold, 150, 1000) ? hold : 350,
     summon: q.get('summon') === 'hold' ? 'hold' : 'clap',
     staffDistance: inRange(dist, 30, 70) ? dist / 100 : 0.45,
-    learned: q.get('learn') === 'all' ? ['rise', 'sleep', 'cuckoo'] : ['rise'],
+    learnAll: q.get('learn') === 'all',
+    scene: isSceneId(q.get('scene')) ? (q.get('scene') as SceneId) : null,
     debug: q.get('debug') === '1',
   };
 }

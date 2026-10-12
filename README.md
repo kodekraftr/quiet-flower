@@ -1,9 +1,17 @@
-# The Song of Quiet Flower — week-1 prototype
+# The Song of Quiet Flower
 
-The core spell loop from `../docs/BUILD_SPEC.md` §10, in a small moonlit stone cell (modelled and lit in Blender, light baked: see `art/README.md`):
+A seated, hands-only musical-spell escape story (`../docs/STORYBOARD.md`, `../docs/BUILD_SPEC.md`).
 
-**clap → the staff appears → pinch notes onto it → hold a fist → the melody plays → Ga Ma lifts what you're looking at.**
-Any other melody triggers a harmless *Curiosity* (the lamp flickers, the pebble hums, moths circle the lantern).
+**Built so far — Scene 2, The Cell, playable start to finish** (modelled and lit in Blender, light baked: see `art/README.md`):
+
+1. **Look at your bag** in the corner and **pinch**: it opens and 5 torn pieces of your own song flutter out.
+2. **Pinch each piece and drop it inside the outline**; it snaps home.
+3. The whole page glows and hums, the pebble trembles, and a drawing of a clap appears in its margin. You've found **Rise (Ga Ma)**.
+4. **Clap → the staff appears** (a fist drawing appears on the page). Write Ga Ma, **hold a fist** to cast.
+5. **Look at the door bar and cast Rise**: the bar lifts, the door swings open, and the story blinks on to the Corridor (coming next).
+
+Any other melody triggers a harmless *Curiosity* (the lamp flickers, the pebble hums, moths circle the lantern). Stuck for 45 s? New handwriting appears on the page.
+The **hearing rule** is in place: listeners carry an ear marker (glowing ear = can hear; struck ear + door / water / earmuff / distance glyph = can't). Scene 2 has no listeners; add `?debug=1` to see a test listener behind the door.
 
 Built with Meta's Immersive Web SDK (IWSDK) 1.0.1 — a WebXR app that runs in Meta Quest Browser.
 
@@ -36,15 +44,16 @@ USB alternative: `adb reverse tcp:8081 tcp:8081`, then open `https://localhost:8
 | Summon / dismiss the staff | **Clap**, then pull your hands about 30 cm apart. Dismiss: clap again, or poke the grey knot at the staff's right end. |
 | Add a note | **Pinch** a coloured token under the staff, move it onto the staff, let go. It snaps to its own line at the next beat. |
 | Remove a note | Pinch it on the staff and let go away from the staff. |
-| Aim Rise | Look at the pebble (or the crate). It glows teal when targeted. |
+| Pick things up | Look at the bag and **pinch**; pinch torn pieces to carry them. |
+| Aim Rise | Look at the pebble, the crate or the door bar. It glows teal when targeted. |
 | Cast | Close either hand into a **fist** and hold until the gold ring around it fills (~0.35 s). |
 
-Only **Ga** and **Ma** are unlocked (you've only found Rise). Rise = **Ga Ma**. Cast again to set the object down.
+Notes unlock as you find spells: the Cell gives **Ga** and **Ma** (Rise = **Ga Ma**). Cast again to set the object down. The staff can't be summoned until the torn song is whole.
 
 ### Keyboard (desktop / emulator)
 
-`Space` staff · `1`–`4` add Sa / Re / Ga / Ma · `Backspace` remove last · `Enter` cast · `Esc` dismiss.
-In a normal desktop browser (no VR), click **Play in browser** on the home screen; the keys are listed at the bottom left and **Home** goes back.
+`Space` staff · `1`–`4` add Sa / Re / Ga / Ma · `Backspace` remove last · `Enter` cast · `Esc` dismiss · `P` the scene's pinch (open the bag, place the next torn piece).
+In a normal desktop browser (no VR), click **Play in browser** on the home screen; **drag (or use the arrow keys) to look around** so you can aim Rise. The keys are listed at the bottom left and **Home** goes back.
 
 ### URL options (no rebuild needed)
 
@@ -55,7 +64,8 @@ In a normal desktop browser (no VR), click **Play in browser** on the home scree
 | `?hold=450` | Fist hold time in ms (150–1000, default 350) |
 | `?summon=hold` | Also allow one-hand summon: pinch and hold still for 1 s |
 | `?dist=50` | Staff distance in cm (30–70, default 45) |
-| `?learn=all` | Unlock all four notes (Sleep and Cuckoo will cast, with no listeners yet) |
+| `?learn=all` | Every spell and note unlocked; the Cell starts at its last step (the door bar) |
+| `?scene=corridor` | Start in a scene (`cell`, `corridor`, `yard`, `gate`, `dawn`); scenes not built yet show a placeholder card |
 
 Combine with `&`, e.g. `https://192.168.1.20:8081/?debug=1&hold=450`.
 

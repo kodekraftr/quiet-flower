@@ -2,10 +2,12 @@
  * Keyboard fallback for testing on a computer (browser or IWER emulator),
  * where clapping and fist-holding can't be done:
  *   Space = summon/dismiss · 1–4 = add Sa/Re/Ga/Ma · Backspace = remove last
- *   Enter = cast · Esc = dismiss
+ *   Enter = cast · Esc = dismiss · P = the scene's pinch interaction
+ *   (open the bag, place the next torn piece, …)
  */
 
 import { createSystem } from '@iwsdk/core';
+import { sceneFlow } from './scene-flow.js';
 import { staffApi } from './staff-state.js';
 
 export class KeyboardSystem extends createSystem({}) {
@@ -34,6 +36,10 @@ export class KeyboardSystem extends createSystem({}) {
           break;
         case 'Escape':
           staffApi.close();
+          break;
+        case 'p':
+        case 'P':
+          sceneFlow.current?.interact?.();
           break;
       }
     };

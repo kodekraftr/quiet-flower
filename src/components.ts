@@ -1,4 +1,4 @@
 import { defineComponents } from '@iwsdk/core';
-import { Liftable } from './game-components.js';
+import { Liftable, Listener, NoiseSource, SoundBlocker } from './game-components.js';
 
-export default defineComponents([Liftable]);
+export default defineComponents([Liftable, Listener, SoundBlocker, NoiseSource]);

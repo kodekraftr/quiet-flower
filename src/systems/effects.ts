@@ -18,10 +18,12 @@ import {
   Vector3,
 } from 'three';
 import { synth } from '../audio/synth.js';
-import { CURIOSITIES, type CastResult } from '../game/spells.js';
+import { CURIOSITIES, type CastResult, type SpellId } from '../game/spells.js';
 import { baked } from '../scene/baked.js';
 import { CanvasText } from '../scene/canvas-text.js';
 import { getViewer } from '../scene/viewer.js';
+import { hearing } from './hearing.js';
+import { foundCuriosity, game, progress } from './progress-state.js';
 import { staffState } from './staff-state.js';
 
 interface LiftState {
@@ -44,10 +46,27 @@ const refs: { lantern: Vector3 | null; pebble: Object3D | null; dust: Points | n
 };
 let pending: PendingCast | null = null;
 let rippleRequested = false;
+let captionRequest: { text: string; color: string; ms: number } | null = null;
+let trembleMs = 0;
 
 export const effects = {
   register(r: Partial<typeof refs>): void {
     Object.assign(refs, r);
+  },
+  /** Forget the current scene's objects (on unload). */
+  clear(): void {
+    refs.lantern = null;
+    refs.pebble = null;
+    refs.dust = null;
+    pending = null;
+  },
+  /** A subtitle or story caption near where the player is looking. */
+  say(text: string, color = HANDWRITING, ms = CAPTION_MS): void {
+    captionRequest = { text, color, ms };
+  },
+  /** The pebble trembles (the song hums by itself). */
+  tremble(ms: number): void {
+    trembleMs = ms;
   },
   /** Called when a cast completes; the effect lands when the melody has played. */
   cast(result: CastResult, target: Object3D | null, melodySeconds: number): void {
@@ -71,7 +90,6 @@ export class EffectsSystem extends createSystem({}) {
   private readonly caption = new CanvasText(0.42, 0.052, 1100, 136, { background: 'rgba(8,12,18,0.72)' });
   private captionUntil = 0;
   private readonly lifts = new Map<Object3D, LiftState>();
-  private readonly found = new Set<number>();
   private flickerUntil = 0;
   private humUntil = 0;
   private mothsUntil = 0;
@@ -124,6 +142,16 @@ export class EffectsSystem extends createSystem({}) {
       }
     });
 
+    if (captionRequest) {
+      const c = captionRequest;
+      captionRequest = null;
+      this.showCaption(c.text, c.color, now, c.ms);
+    }
+    if (trembleMs > 0) {
+      this.humUntil = now + trembleMs;
+      trembleMs = 0;
+    }
+
     if (pending && now >= pending.landsAt) {
       const p = pending;
       pending = null;
@@ -174,6 +202,7 @@ export class EffectsSystem extends createSystem({}) {
 
   private land(p: PendingCast, now: number): void {
     const r = p.result;
+    game.emit('cast', { result: r });
     switch (r.kind) {
       case 'spell':
         if (r.spell.id === 'rise') {
@@ -185,18 +214,17 @@ export class EffectsSystem extends createSystem({}) {
           const lifted = this.toggleLift(p.target);
           synth.chime();
           this.showCaption(lifted ? 'Rise' : 'Rise — set down', GOLD, now);
+          game.emit('rise', { target: p.target, lifted });
         } else {
-          synth.chime();
-          this.showCaption(`${r.spell.name} — no one here can hear it.`, HANDWRITING, now);
+          this.reachListeners(r.spell.id, r.spell.name, now);
         }
         return;
       case 'free':
-        synth.chime();
-        this.showCaption('Free', GOLD, now);
+        this.reachListeners('free', 'Free', now);
         return;
       case 'curiosity': {
-        this.found.add(r.index);
-        this.showCaption(`${CURIOSITIES[r.index]} · curiosity ${this.found.size}/${CURIOSITIES.length}`, HANDWRITING, now);
+        foundCuriosity(r.index);
+        this.showCaption(`${CURIOSITIES[r.index]} · curiosity ${progress.curiosities.length}/${CURIOSITIES.length}`, HANDWRITING, now);
         if (r.index === 0) this.flickerUntil = now + 1500;
         else if (r.index === 1) this.humUntil = now + 1200;
         else this.mothsUntil = now + 4000;
@@ -204,6 +232,17 @@ export class EffectsSystem extends createSystem({}) {
       }
       case 'empty':
         return;
+    }
+  }
+
+  /** Sleep, Cuckoo and Free reach only the listeners who can hear (build spec §5). */
+  private reachListeners(spell: SpellId | 'free', name: string, now: number): void {
+    const { heard, missed } = hearing.cast(spell);
+    synth.chime();
+    if (heard.length === 0) {
+      this.showCaption(missed.length ? `${name}: no one heard it.` : `${name}: no one here to hear it.`, HANDWRITING, now);
+    } else {
+      this.showCaption(name, GOLD, now);
     }
   }
 
@@ -220,13 +259,13 @@ export class EffectsSystem extends createSystem({}) {
   }
 
   /** Placed where the player is actually looking (often down at the staff), just above it. */
-  private showCaption(text: string, color: string, now: number): void {
+  private showCaption(text: string, color: string, now: number, ms = CAPTION_MS): void {
     getViewer(this.world, this.eye, this.forward);
     const m = this.caption.mesh;
     m.position.copy(this.eye).addScaledVector(this.forward, 0.75);
     m.position.y += 0.16;
     m.lookAt(this.eye);
     this.caption.set(text, color);
-    this.captionUntil = now + CAPTION_MS;
+    this.captionUntil = now + ms;
   }
 }

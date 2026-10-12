@@ -4,9 +4,9 @@
  * material with the Cycles lighting baked into its texture, so the room costs
  * about 11 draw calls, ~27k triangles and no real-time lights or shadows.
  *
- * Movable things (pebble, crate, door bar) are separate meshes; they were left
- * out of the room's baked shadows, so each gets a soft blob shadow that fades
- * as Rise lifts it.
+ * Movable things (pebble, crate, door bar, door) are separate meshes; they were
+ * left out of the room's baked shadows, so each gets a soft blob shadow that
+ * fades as Rise lifts it. The door's origin is its hinge.
  */
 
 import {
@@ -35,6 +35,12 @@ export interface Cell {
   pebble: Object3D;
   crate: Object3D;
   doorBar: Object3D;
+  /** Swings open about its own Y axis (origin = hinge); negative angles open it outward. */
+  door: Object3D;
+  /** Warm light at the far end of the corridor, shown once the door opens. */
+  corridorGlow: Mesh;
+  /** The grain sack in the corner: the player's bag. */
+  bagCenter: Vector3;
   /** Centre of the lantern's glass (moths circle it). */
   lanternCenter: Vector3;
   dust: Points;
@@ -63,6 +69,22 @@ function blobTexture(): CanvasTexture {
   grad.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+
+function glowTexture(): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 128;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(32, 80, 2, 32, 80, 64);
+  grad.addColorStop(0, 'rgba(255,170,80,0.9)');
+  grad.addColorStop(0.4, 'rgba(200,110,40,0.35)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 128);
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
   return t;
@@ -116,7 +138,8 @@ export function buildCell(gltf: GLTF): Cell {
   const pebble = find('pebble');
   const crate = find('crate');
   const doorBar = find('door_bar');
-  for (const o of [pebble, crate, doorBar]) o.removeFromParent();
+  const door = find('door');
+  for (const o of [pebble, crate, doorBar, door]) o.removeFromParent();
 
   const blob = blobTexture();
   addBlob(room, pebble, 0.15, 0.4415, 0.8, blob); // on the pedestal top
@@ -147,5 +170,26 @@ export function buildCell(gltf: GLTF): Cell {
   );
   room.add(dust);
 
-  return { room: room as Group, pebble, crate, doorBar, lanternCenter, dust };
+  // The corridor stub is baked unlit (see art/build_cell.py); torchlight round the corner.
+  const glowTex = glowTexture();
+  const corridorGlow = new Mesh(
+    new PlaneGeometry(1.4, 2.0),
+    new MeshBasicMaterial({ map: glowTex, transparent: true, blending: AdditiveBlending, depthWrite: false, opacity: 0 }),
+  );
+  corridorGlow.position.set(3.6, 1.0, -0.7);
+  corridorGlow.rotation.y = -Math.PI / 2;
+  corridorGlow.visible = false;
+  room.add(corridorGlow);
+
+  return {
+    room: room as Group,
+    pebble,
+    crate,
+    doorBar,
+    door,
+    corridorGlow,
+    bagCenter: new Vector3(-1.16, 0.26, -1.22),
+    lanternCenter,
+    dust,
+  };
 }
