@@ -59,7 +59,7 @@ In a normal desktop browser (no VR), click **Play in browser** on the home scree
 
 Combine with `&`, e.g. `https://192.168.1.20:8081/?debug=1&hold=450`.
 
-**Hand-tracking test page:** open `/test` (e.g. https://kodekraftr.github.io/quiet-flower/test). For each hand it shows how far the palm is from the midpoint of both palms (left/right, up/down, forward/back, in cm), which fingers are open or closed, and **FIST**. The readout floats in front of you in VR and is mirrored on the page.
+**Hand-tracking test page:** open `/test` (e.g. https://kodekraftr.github.io/quiet-flower/test). Bring both palms together and hold for 1 s to set 0,0,0; then each hand shows its palm position from there as signed x/y/z in cm (x+ right, y+ up, z+ forward), which fingers are open or closed, and **FIST**. The readout floats in front of you in VR and is mirrored on the page.
 
 ## Week-1 acceptance test (go / no-go on Oct 12)
 

@@ -1,6 +1,6 @@
 /**
- * Readable hand pose for the /test page: which fingers are open, and where a
- * palm sits relative to a reference point along the viewer's axes.
+ * Readable hand pose for the /test page: which fingers are open, where a
+ * palm sits relative to the 0,0,0 point, and the gesture that sets that point.
  * Pure module: no Three.js, no allocation.
  */
 
@@ -42,4 +42,48 @@ export function handOffset(palm: Point3, origin: Point3, right: Point3, forward:
   out.y = dy;
   out.z = dx * forward.x + dz * forward.z;
   return out;
+}
+
+/**
+ * "Palms together and hold" sets the /test page's 0,0,0. `update` takes the
+ * palm-to-palm distance (NaN when either hand is untracked) and returns true
+ * once when the hold completes. Hands must separate before it can fire again.
+ * Brief tracking loss is forgiven: overlapping hands often drop out.
+ */
+export class ZeroHold {
+  nearDistance = 0.08;
+  holdMs = 1000;
+  lossGraceMs = 300;
+
+  /** 0–1 while the palms are held together. */
+  progress = 0;
+
+  private start = -1;
+  private lastSeen = Number.NEGATIVE_INFINITY;
+  private done = false;
+
+  update(palmDistance: number, nowMs: number): boolean {
+    if (!Number.isFinite(palmDistance)) {
+      if (nowMs - this.lastSeen > this.lossGraceMs) this.reset();
+      return false;
+    }
+    this.lastSeen = nowMs;
+    if (palmDistance >= this.nearDistance) {
+      this.reset();
+      this.done = false;
+      return false;
+    }
+    if (this.done) return false;
+    if (this.start < 0) this.start = nowMs;
+    this.progress = Math.min(1, (nowMs - this.start) / this.holdMs);
+    if (this.progress < 1) return false;
+    this.done = true;
+    this.reset();
+    return true;
+  }
+
+  private reset(): void {
+    this.start = -1;
+    this.progress = 0;
+  }
 }

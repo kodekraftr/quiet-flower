@@ -30,7 +30,7 @@
         margin: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
         font: 14px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; min-height: 6.4em;
       }
-      #hand-apart { min-height: 0; text-align: center; }
+      #zero-status { min-height: 0; text-align: center; }
       .note { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
       body[data-xr='on'] .bar { display: none; }
       @media (max-width: 600px) { .hands { grid-template-columns: 1fr; } }
@@ -47,16 +47,17 @@
         <button id="vr-button" type="button" disabled>Enter VR</button>
         <p id="vr-status">Loading…</p>
       </div>
+      <pre id="zero-status">0,0,0 not set
+Bring your palms together and hold for 1 s</pre>
       <div class="hands">
         <pre id="hand-left">LEFT HAND
 not tracked</pre>
         <pre id="hand-right">RIGHT HAND
 not tracked</pre>
       </div>
-      <pre id="hand-apart">Hands apart: –</pre>
       <p class="note">
-        0 is the midpoint between your palms, so moving one hand moves both readouts. Left/right and forward/back follow
-        the way you're facing. The same readout floats in front of you in VR.
+        Bring your palms together and hold for 1 second: that spot becomes 0,0,0, and x/y/z follow the way you were facing.
+        Positions are your palm centres in cm: x+ right, y+ up, z+ forward. The same readout floats in front of you in VR.
       </p>
     </div>
     <script type="module" src="/src/test-page.ts"></script>
